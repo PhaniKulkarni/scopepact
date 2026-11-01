@@ -97,6 +97,9 @@ def close(pid: int):
         for auth_id in {i.auth_id for i in pact.items if i.auth_id}:
             code = paypal.void(auth_id)
             db.add(Payment(pact_id=pid, kind="void", paypal_id=auth_id, status=str(code)))
+        for i in pact.items:
+            if i.status in ("agreed", "verified"):
+                i.status = "released"
         pact.status = "closed"
         log(db, pid, "pact_closed", "unused holds released")
         db.commit()

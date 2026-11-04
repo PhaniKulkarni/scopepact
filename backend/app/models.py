@@ -46,4 +46,30 @@ class Event(Base):
     detail: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
+class Rules(Base):
+    __tablename__ = "rules"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pact_id: Mapped[int]
+    side: Mapped[str]            # buyer or seller
+    rules_json: Mapped[str]
+
+class ChangeRequest(Base):
+    __tablename__ = "change_requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pact_id: Mapped[int]
+    item_name: Mapped[str]
+    reason: Mapped[str] = mapped_column(default="")
+    asked_cents: Mapped[int]
+    agreed_cents: Mapped[int | None] = mapped_column(default=None)
+    status: Mapped[str] = mapped_column(default="open")
+    # open, approved, awaiting_buyer, blocked, no_deal, declined
+    decision_reason: Mapped[str] = mapped_column(default="")
+
+class NegotiationTurn(Base):
+    __tablename__ = "negotiation_turns"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    change_id: Mapped[int]
+    agent: Mapped[str]           # buyer_agent, seller_agent, referee, policy
+    message: Mapped[str]
+
 Base.metadata.create_all(engine)

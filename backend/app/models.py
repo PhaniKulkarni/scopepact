@@ -26,6 +26,7 @@ class LineItem(Base):
     version: Mapped[int] = mapped_column(default=1)
     status: Mapped[str] = mapped_column(default="agreed")  # agreed, verified, paid, blocked
     auth_id: Mapped[str | None] = mapped_column(default=None)
+    criteria: Mapped[str] = mapped_column(default="")
     pact = relationship("Pact", back_populates="items")
 
 class Payment(Base):
@@ -64,6 +65,7 @@ class ChangeRequest(Base):
     status: Mapped[str] = mapped_column(default="open")
     # open, approved, awaiting_buyer, blocked, no_deal, declined
     decision_reason: Mapped[str] = mapped_column(default="")
+    criteria: Mapped[str] = mapped_column(default="")
 
 class NegotiationTurn(Base):
     __tablename__ = "negotiation_turns"
@@ -71,5 +73,16 @@ class NegotiationTurn(Base):
     change_id: Mapped[int]
     agent: Mapped[str]           # buyer_agent, seller_agent, referee, policy
     message: Mapped[str]
+
+class Proof(Base):
+    __tablename__ = "proofs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int]
+    filename: Mapped[str]
+    file_hash: Mapped[str]
+    passed: Mapped[bool]
+    confidence: Mapped[float]
+    reasons: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
 Base.metadata.create_all(engine)

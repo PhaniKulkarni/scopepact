@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScopePact</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #14181f; --muted: #5f6b7a; --line: #e3e7ec;
+    --navy: #0b2a4a; --blue: #1f5fbf; --green: #1a7f4b; --amber: #a86400; --red: #b42318;
+    --green-bg: #e7f5ed; --amber-bg: #fff4e0; --red-bg: #fdecea; --blue-bg: #e8f0fc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--ink); }
+  header { background: var(--navy); color: #fff; padding: 14px 24px; display: flex;
+           align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: .2px; }
+  header .tag { opacity: .75; font-size: 13px; flex: 1; min-width: 200px; }
+  header select, header button { font: inherit; }
+  select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); }
+  button { cursor: pointer; border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 600;
+           background: var(--blue); color: #fff; }
+  button.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  button.danger { background: #fff; color: var(--red); border: 1px solid #f1c4bf; }
+  button.paypal { background: #ffc439; color: #111; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  #banner { display: none; margin: 16px 24px 0; padding: 10px 14px; border-radius: 8px; font-weight: 600; }
+  .summary { display: flex; gap: 12px; margin: 16px 24px 0; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+          padding: 10px 16px; min-width: 130px; }
+  .stat .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .stat .v { font-size: 20px; font-weight: 700; }
+  main { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 16px; padding: 16px 24px 32px; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 15px; }
+  .card h3 { margin: 0 0 10px; font-size: 12px; color: var(--muted); text-transform: uppercase;
+             letter-spacing: .5px; }
+  .role { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+          border-radius: 99px; margin-bottom: 8px; }
+  .role.buyer { background: var(--blue-bg); color: var(--blue); }
+  .role.seller { background: var(--green-bg); color: var(--green); }
+  .rules { font-size: 13px; color: var(--muted); margin: 6px 0 0; padding-left: 18px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+          white-space: nowrap; }
+  .s-agreed { background: #eef0f3; color: #3d4652; }
+  .s-verified, .s-approved { background: var(--blue-bg); color: var(--blue); }
+  .s-paid { background: var(--green-bg); color: var(--green); }
+  .s-needs_review, .s-awaiting_buyer { background: var(--amber-bg); color: var(--amber); }
+  .s-released, .s-declined, .s-no_deal { background: #eef0f3; color: #7a8592; }
+  .s-blocked, .s-failed { background: var(--red-bg); color: var(--red); }
+  .small { font-size: 12px; color: var(--muted); }
+  textarea { width: 100%; min-height: 84px; font: inherit; padding: 10px; border-radius: 8px;
+             border: 1px solid var(--line); resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .approval { border: 2px solid var(--amber); background: var(--amber-bg); border-radius: 10px; padding: 12px;
+              margin-top: 10px; }
+  .approval .big { font-size: 16px; font-weight: 700; }
+  .deliver { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+  .chat { display: flex; flex-direction: column; gap: 8px; }
+  .msg { border-radius: 10px; padding: 8px 12px; max-width: 92%; }
+  .msg .who { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+  .msg.seller, .msg.seller_agent { background: var(--green-bg); align-self: flex-end; }
+  .msg.buyer, .msg.buyer_agent { background: var(--blue-bg); align-self: flex-start; }
+  .msg.referee { background: #f1eefc; align-self: center; text-align: center; }
+  .msg.policy { background: #222b36; color: #fff; align-self: center; text-align: center; }
+  .badge { font-size: 11px; opacity: .8; }
+  ul.reasons { margin: 6px 0 0; padding-left: 18px; }
+  .hist { font-family: ui-monospace, Consolas, monospace; font-size: 12px; max-height: 260px; overflow: auto;
+          white-space: pre-wrap; color: #333; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  .busy { display: none; color: var(--muted); font-style: italic; }
+  .empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ScopePact</h1>
+  <div class="tag">AI proposes, code decides, PayPal settles.</div>
+  <select id="pactSelect" aria-label="Choose pact"></select>
+  <button class="secondary" id="newDemo">New demo pact</button>
+</header>
+
+<div id="banner"></div>
+
+<div class="summary" id="summary"></div>
+
+<main>
+  <!-- CLIENT -->
+  <section class="col">
+    <div class="card">
+      <span class="role buyer">CLIENT</span>
+      <h2>Client and their AI agent</h2>
+      <div class="small">Rules the client's agent must follow:</div>
+      <ul class="rules" id="buyerRules"></ul>
+    </div>
+    <div class="card">
+      <h3>Payment</h3>
+      <div id="holdBox"></div>
+      <div id="approvals"></div>
+      <div id="reviews"></div>
+    </div>
+    <div class="card">
+      <h3>Finish</h3>
+      <div class="small">Release any money still on hold and close the agreement.</div>
+      <div class="row"><button class="danger" id="closeBtn">Close pact</button></div>
+    </div>
+  </section>
+
+  <!-- AGREEMENT -->
+  <section class="col">
+    <div class="card">
+      <h3 id="pactTitle">Agreement</h3>
+      <table>
+        <thead><tr><th>Item</th><th>Ver.</th><th class="num">Price</th><th>Status</th></tr></thead>
+        <tbody id="items"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Latest negotiation</h3>
+      <div class="chat" id="chat"></div>
+    </div>
+    <div class="card">
+      <h3>PayPal activity</h3>
+      <table>
+        <thead><tr><th>Action</th><th>PayPal ID</th><th class="num">Amount</th></tr></thead>
+        <tbody id="payments"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>History</h3>
+      <div class="hist" id="history"></div>
+    </div>
+  </section>
+
+  <!-- FREELANCER -->
+  <section class="col">
+    <div class="card">
+      <span class="role seller">FREELANCER</span>
+      <h2>Freelancer and their AI agent</h2>
+      <div class="small">Rules the freelancer's agent must follow:</div>
+      <ul class="rules" id="sellerRules"></ul>
+    </div>
+    <div class="card">
+      <h3>Request a change</h3>
+      <div class="small">Write it the way you'd text a client. The agents handle the rest.</div>
+      <textarea id="changeMsg">client wants a mobile version of the homepage too, I'd charge about 3 bucks, takes me around 4 hours</textarea>
+      <div class="row">
+        <button id="sendChange">Send to agents</button>
+        <span class="busy" id="changeBusy">Agents negotiating...</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Deliver work</h3>
+      <div class="small">Upload proof. AI checks it against the agreed criteria; only verified work gets paid.</div>
+      <div id="deliver"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (v) => "$" + Number(v).toFixed(2);
+const chip = (status) => `<span class="chip s-${esc(status)}">${esc(String(status).replace("_", " "))}</span>`;
+let pid = Number(new URLSearchParams(location.search).get("pact")) || null;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail ? (typeof body.detail === "string" ? body.detail
+                                                : JSON.stringify(body.detail)) : r.statusText);
+  return body;
+}
+
+function banner(text, kind = "ok") {
+  const b = $("banner");
+  const colors = { ok: ["var(--green-bg)", "var(--green)"], warn: ["var(--amber-bg)", "var(--amber)"],
+                   err: ["var(--red-bg)", "var(--red)"], info: ["var(--blue-bg)", "var(--blue)"] };
+  [b.style.background, b.style.color] = colors[kind];
+  b.textContent = text;
+  b.style.display = "block";
+}
+
+function rulesList(r, side) {
+  if (!r || !Object.keys(r).length) return `<li class="empty">No rules set</li>`;
+  const out = [];
+  if (side === "buyer") {
+    if (r.budget_cap_cents != null) out.push(`Total budget cap: <b>${money(r.budget_cap_cents / 100)}</b>`);
+    if (r.auto_approve_under_cents != null) out.push(`Auto-approve extras up to <b>${money(r.auto_approve_under_cents / 100)}</b>`);
+    if (r.never_approve?.length) out.push(`Never approve: <b>${esc(r.never_approve.join(", "))}</b>`);
+  } else {
+    if (r.floor_cents != null) out.push(`Never accept less than <b>${money(r.floor_cents / 100)}</b> for extra work`);
+  }
+  if (r.notes) out.push(esc(r.notes));
+  return out.map((x) => `<li>${x}</li>`).join("");
+}
+
+async function loadList() {
+  const pacts = await api("/pacts");
+  if (!pid && pacts.length) pid = pacts[0].id;
+  $("pactSelect").innerHTML = pacts.length
+    ? pacts.map((p) => `<option value="${p.id}" ${p.id === pid ? "selected" : ""}>#${p.id} ${esc(p.title)} (${esc(p.status)})</option>`).join("")
+    : `<option>No pacts yet</option>`;
+}
+
+async function render() {
+  if (!pid) {
+    $("summary").innerHTML = "";
+    $("items").innerHTML = `<tr><td colspan="4" class="empty">Click "New demo pact" to start.</td></tr>`;
+    return;
+  }
+  const p = await api(`/pacts/${pid}`);
+  $("pactTitle").textContent = `${p.title} · version ${p.version}`;
+  $("summary").innerHTML = [
+    ["Agreed total", money(p.totals.agreed)], ["Held by PayPal", money(p.totals.held)],
+    ["Paid", money(p.totals.paid)], ["Status", esc(p.status)],
+  ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+
+  $("buyerRules").innerHTML = rulesList(p.rules.buyer, "buyer");
+  $("sellerRules").innerHTML = rulesList(p.rules.seller, "seller");
+
+  $("items").innerHTML = p.items.map((i) => `
+    <tr><td><b>${esc(i.name)}</b><div class="small">${esc(i.criteria)}</div></td>
+        <td>v${i.version}</td><td class="num">${money(i.price)}</td>
+        <td>${chip(i.status)}${i.held && i.status !== "paid" && i.status !== "released"
+              ? `<div class="small">on hold</div>` : ""}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="empty">No items</td></tr>`;
+
+  // Client: hold funds + approvals
+  const unheld = Number(p.totals.unheld);
+  $("holdBox").innerHTML = unheld > 0
+    ? `<div>${money(unheld)} of agreed work is not yet held.</div>
+       <div class="row"><button class="paypal" id="holdBtn">Hold ${money(unheld)} with PayPal</button></div>`
+    : `<div class="small">All agreed work is covered by a PayPal hold. Nothing is charged until work is verified.</div>`;
+  if (unheld > 0) $("holdBtn").onclick = (e) => { e.target.disabled = true; hold(); };
+
+  const waiting = p.changes.filter((c) => c.status === "awaiting_buyer");
+  $("approvals").innerHTML = waiting.map((c) => `
+    <div class="approval">
+      <div class="small">Your approval is needed</div>
+      <div class="big">${esc(c.item)}</div>
+      <div>Asked ${money(c.asked)} → agents agreed <b>${money(c.agreed)}</b></div>
+      <div class="small">Why you're asked: ${esc(c.reason)}</div>
+      <div class="row">
+        <button class="paypal" data-approve="${c.id}">Approve and hold ${money(c.agreed)}</button>
+        <button class="secondary" data-decline="${c.id}">Decline</button>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => { b.disabled = true; approve(b.dataset.approve); });
+  document.querySelectorAll("[data-decline]").forEach((b) => b.onclick = () => decline(b.dataset.decline));
+
+  // Client: proofs the AI wasn't confident about
+  const unsure = p.items.filter((i) => i.status === "needs_review");
+  $("reviews").innerHTML = unsure.map((i) => {
+    const pr = p.proofs.filter((x) => x.item_id === i.id).pop();
+    return `<div class="approval">
+      <div class="small">AI wasn't sure (${pr ? Math.round(pr.confidence * 100) : "?"}% confidence). You decide.</div>
+      <div class="big">${esc(i.name)} · ${money(i.price)}</div>
+      ${pr ? `<ul class="reasons small">${pr.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+      <div class="row">
+        <button data-review-ok="${i.id}">Accept work and pay ${money(i.price)}</button>
+        <button class="secondary" data-review-no="${i.id}">Reject proof</button>
+      </div></div>`;
+  }).join("");
+  document.querySelectorAll("[data-review-ok]").forEach((b) => b.onclick = () => { b.disabled = true; review(b.dataset.reviewOk, true); });
+  document.querySelectorAll("[data-review-no]").forEach((b) => b.onclick = () => { b.disabled = true; review(b.dataset.reviewNo, false); });
+
+  // Negotiation transcript (latest change)
+  const last = p.changes[p.changes.length - 1];
+  if (last) {
+    const c = await api(`/changes/${last.id}`);
+    const names = { seller: "Freelancer", seller_agent: "Freelancer's agent", buyer: "Client",
+                    buyer_agent: "Client's agent", referee: "Referee (sealed limits)", policy: "Policy engine" };
+    $("chat").innerHTML = `<div class="small">${esc(c.item)} · ${chip(c.status)}</div>` +
+      c.transcript.map((t) => `<div class="msg ${esc(t.agent)}"><div class="who">${esc(names[t.agent] || t.agent)}</div>
+        ${esc(t.message)}${t.agent === "policy" ? `<div class="badge">AI proposes, code decides</div>` : ""}</div>`).join("");
+  } else {
+    $("chat").innerHTML = `<div class="empty">No change requests yet.</div>`;
+  }
+
+  // Freelancer: deliver work
+  const open = p.items.filter((i) => ["agreed", "needs_review", "verified"].includes(i.status));
+  $("deliver").innerHTML = open.map((i) => {
+    const proofs = p.proofs.filter((x) => x.item_id === i.id);
+    const lastProof = proofs[proofs.length - 1];
+    return `<div class="deliver">
+      <div><b>${esc(i.name)}</b> ${chip(i.status)}</div>
+      ${lastProof ? `<div class="small">Last check: ${lastProof.passed ? "passed" : "failed"}
+          (${Math.round(lastProof.confidence * 100)}% confidence)</div>
+          <ul class="reasons small">${lastProof.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+      ${i.status === "verified"
+        ? `<div class="row"><button data-capture="${i.id}">Get paid ${money(i.price)}</button></div>`
+        : `<div class="row"><input type="file" accept="image/*" id="file${i.id}">
+           <button data-proof="${i.id}">Submit proof</button>
+           <span class="busy" id="busy${i.id}">AI checking...</span></div>`}
+    </div>`;
+  }).join("") || `<div class="empty">Nothing left to deliver.</div>`;
+  document.querySelectorAll("[data-proof]").forEach((b) => b.onclick = () => proof(b.dataset.proof));
+  document.querySelectorAll("[data-capture]").forEach((b) => b.onclick = () => capture(b.dataset.capture));
+
+  $("payments").innerHTML = p.payments.map((x) => `
+    <tr><td>${esc(x.kind)}</td><td><code>${esc(x.paypal_id)}</code></td>
+        <td class="num">${x.kind === "void" ? "released" : money(x.amount)}</td></tr>`).join("")
+    || `<tr><td colspan="3" class="empty">No PayPal activity yet</td></tr>`;
+
+  $("history").textContent = p.history.join("\n");
+  $("closeBtn").disabled = p.status === "closed";
+}
+
+async function run(fn) {
+  try { await fn(); } catch (e) { banner(e.message, "err"); }
+  await loadList(); await render();
+}
+
+const hold = () => run(async () => {
+  const r = await api(`/pacts/${pid}/checkout`, { method: "POST" });
+  banner(`Opening PayPal to hold ${money(r.amount)}...`, "info");
+  location.href = r.approve_link;
+});
+
+const approve = (cid) => run(async () => {
+  await api(`/changes/${cid}/approve`, { method: "POST" });
+  const r = await api(`/pacts/${pid}/checkout`, { method: "POST" });
+  banner(`Approved. Opening PayPal to hold ${money(r.amount)}...`, "info");
+  location.href = r.approve_link;
+});
+
+const decline = (cid) => run(async () => {
+  await api(`/changes/${cid}/decline`, { method: "POST" });
+  banner("Change declined.", "warn");
+});
+
+$("sendChange").onclick = () => run(async () => {
+  $("changeBusy").style.display = "inline"; $("sendChange").disabled = true;
+  try {
+    const r = await api(`/pacts/${pid}/changes/ai`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: $("changeMsg").value }) });
+    const text = { approved: [`Auto-approved at ${money(r.agreed_price)} within the client's rules.`, "ok"],
+                   awaiting_buyer: [`Agents agreed ${money(r.agreed_price)}. Client approval needed: ${r.reason}`, "warn"],
+                   blocked: [`Blocked by policy: ${r.reason}`, "err"],
+                   no_deal: ["No price works for both sides. Handed to humans.", "warn"] }[r.status];
+    banner(...(text || [r.status, "info"]));
+  } finally { $("changeBusy").style.display = "none"; $("sendChange").disabled = false; }
+});
+
+const proof = (iid) => run(async () => {
+  const f = $(`file${iid}`).files[0];
+  if (!f) throw new Error("Choose an image first");
+  $(`busy${iid}`).style.display = "inline";
+  const fd = new FormData(); fd.append("file", f);
+  const r = await api(`/items/${iid}/proof`, { method: "POST", body: fd });
+  if (r.verdict === "verified") {
+    banner(`Verified (${Math.round(r.confidence * 100)}%). Requesting payment...`, "info");
+    try {
+      const c = await api(`/items/${iid}/capture`, { method: "POST" });
+      banner(`Paid ${money(c.captured)} for ${r.item}. PayPal capture ${c.capture_id}`, "ok");
+    } catch (e) { banner(`Verified, but not paid yet: ${e.message}`, "warn"); }
+  } else if (r.verdict === "needs_review") {
+    banner("AI wasn't confident enough, so the client decides. See the review card on the left.", "warn");
+  } else {
+    banner(`Proof rejected: ${r.reasons[0] || "does not meet the criteria"}`, "err");
+  }
+});
+
+const review = (iid, ok) => run(async () => {
+  await api(`/items/${iid}/review`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ approve: ok }) });
+  if (!ok) { banner("Proof rejected. The freelancer needs to upload better proof.", "warn"); return; }
+  const c = await api(`/items/${iid}/capture`, { method: "POST" });
+  banner(`You accepted the work. Paid ${money(c.captured)}. PayPal capture ${c.capture_id}`, "ok");
+});
+
+const capture = (iid) => run(async () => {
+  const c = await api(`/items/${iid}/capture`, { method: "POST" });
+  banner(`Paid ${money(c.captured)}. PayPal capture ${c.capture_id}`, "ok");
+});
+
+$("closeBtn").onclick = () => run(async () => {
+  await api(`/pacts/${pid}/close`, { method: "POST" });
+  banner("Pact closed. Unused holds released back to the client.", "ok");
+});
+
+$("newDemo").onclick = () => run(async () => {
+  const r = await api("/demo/seed", { method: "POST" });
+  pid = r.pact_id;
+  history.replaceState(null, "", `?pact=${pid}`);
+  banner("Demo pact created. Start by holding funds with PayPal.", "info");
+});
+
+$("pactSelect").onchange = (e) => {
+  pid = Number(e.target.value);
+  history.replaceState(null, "", `?pact=${pid}`);
+  $("banner").style.display = "none";
+  render().catch((err) => banner(err.message, "err"));
+};
+
+// Messages after returning from PayPal
+const msg = new URLSearchParams(location.search).get("msg");
+if (msg === "held") banner("PayPal hold placed. Nothing is charged until work is verified.", "ok");
+if (msg === "cancelled") banner("PayPal approval cancelled. Nothing was held.", "warn");
+if (msg === "auth_failed") banner("PayPal authorization failed. Try holding funds again.", "err");
+if (msg) history.replaceState(null, "", `?pact=${pid}`);
+
+loadList().then(render).catch((e) => banner(e.message, "err"));
+</script>
+</body>
+</html>

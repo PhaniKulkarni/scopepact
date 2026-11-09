@@ -450,14 +450,38 @@ def approve_change(cid: int):
                 "next": f"POST /pacts/{pact.id}/checkout to hold the new amount"}
 
 
+@app.post("/changes/{cid}/accept-ask")
+def accept_asked_price(cid: int):
+    """Agents found no fair price: the client chooses to accept the freelancer's asked price."""
+    with SessionLocal() as db:
+        cr = db.get(ChangeRequest, cid)
+        if not cr:
+            raise HTTPException(404, f"Change {cid} not found")
+        if cr.status != "no_deal":
+            raise HTTPException(400, f"Change is '{cr.status}', not waiting for a human decision")
+        pact = db.get(Pact, cr.pact_id)
+        cr.agreed_cents = cr.asked_cents
+        cr.status = "approved"
+        cr.decision_reason = "Client accepted the freelancer's price"
+        db.add(NegotiationTurn(change_id=cid, agent="buyer",
+                               message=f"Client accepted the freelancer's price of ${paypal.usd(cr.asked_cents)}"))
+        log(db, pact.id, "change_accepted_by_client", f"{cr.item_name} at {paypal.usd(cr.asked_cents)}")
+        add_item_from_change(db, pact, cr)
+        db.commit()
+        return {"status": "approved", "agreed_price": paypal.usd(cr.agreed_cents),
+                "next": f"POST /pacts/{pact.id}/checkout to hold the new amount"}
+
+
 @app.post("/changes/{cid}/decline")
 def decline_change(cid: int):
     with SessionLocal() as db:
         cr = db.get(ChangeRequest, cid)
         if not cr:
             raise HTTPException(404, f"Change {cid} not found")
+        if cr.status not in ("awaiting_buyer", "no_deal"):
+            raise HTTPException(400, f"Change is '{cr.status}', nothing to decline")
         cr.status = "declined"
-        db.add(NegotiationTurn(change_id=cid, agent="buyer", message="Declined by buyer"))
+        db.add(NegotiationTurn(change_id=cid, agent="buyer", message="Declined by the client"))
         log(db, cr.pact_id, "change_declined", cr.item_name)
         db.commit()
         return {"status": "declined"}

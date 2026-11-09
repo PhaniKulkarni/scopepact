@@ -38,6 +38,8 @@ class ItemIn(BaseModel):
 class PactIn(BaseModel):
     title: str
     items: list[ItemIn]
+    buyer_rules: dict = {}   # optional: client's rules, saved with the pact
+    seller_rules: dict = {}  # optional: freelancer's rules
 
 
 class RulesIn(BaseModel):
@@ -124,7 +126,9 @@ def demo_seed():
 @app.get("/pacts")
 def list_pacts():
     with SessionLocal() as db:
-        return [{"id": p.id, "title": p.title, "status": p.status}
+        return [{"id": p.id, "title": p.title, "status": p.status, "version": p.version,
+                 "agreed": paypal.usd(current_total(p)),
+                 "paid": paypal.usd(sum(i.price_cents for i in p.items if i.status == "paid"))}
                 for p in db.query(Pact).order_by(Pact.id.desc())]
 
 
@@ -137,6 +141,9 @@ def create_pact(p: PactIn):
         for i in p.items:
             db.add(LineItem(pact_id=pact.id, name=i.name, price_cents=i.price_cents,
                             criteria=i.criteria))
+        for side, rules in (("buyer", p.buyer_rules), ("seller", p.seller_rules)):
+            if rules:
+                db.add(Rules(pact_id=pact.id, side=side, rules_json=json.dumps(rules)))
         log(db, pact.id, "pact_created", f"{p.title} with {len(p.items)} items")
         db.commit()
         return {"pact_id": pact.id}
@@ -261,6 +268,8 @@ def get_pact(pid: int):
                          for p in db.query(Payment).filter_by(pact_id=pid)],
             "history": [f"{e.created_at:%H:%M:%S} {e.type}: {e.detail}"
                         for e in db.query(Event).filter_by(pact_id=pid)],
+            "events": [{"time": e.created_at.isoformat() + "Z", "type": e.type, "detail": e.detail}
+                       for e in db.query(Event).filter_by(pact_id=pid).order_by(Event.id)],
         }
 
 

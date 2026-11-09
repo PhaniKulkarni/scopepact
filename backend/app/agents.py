@@ -79,6 +79,9 @@ Return JSON only: {{"private_max_cents": int,
 "public_message": "under 40 words, polite, give a reason",
 "recommend": "accept" | "counter" | "reject"}}
 private_max_cents is secret and goes only to a neutral referee. Never reveal it.
+Set private_max_cents to what the work is genuinely worth to the buyer, not the lowest
+price you hope for. In public_message, give an opening position below your private max;
+never state or hint at the private max itself.
 {MONEY_RULE}"""
 
 
@@ -99,7 +102,11 @@ Decide the lowest price the seller should accept for this change, using the
 seller's rules and the effort described. Never go below the seller's floor.
 Return JSON only: {{"private_min_cents": int,
 "public_message": "under 40 words, professional, justify the price"}}
-private_min_cents is secret and goes only to a neutral referee. Never reveal it.In public_message, defend the asked price. Never mention your private minimum or any lower price.
+private_min_cents is secret and goes only to a neutral referee. Never reveal it.
+Your floor is an absolute minimum, never a target. Set private_min_cents from the fair
+value of the effort described (hours, scope, revisions included). For reasonable requests
+it is usually at least 70% of the asked price; go near the floor only for trivial work.
+In public_message, defend the asked price. Never mention your private minimum or any lower price.
 {MONEY_RULE}"""
 
 

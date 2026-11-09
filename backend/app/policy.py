@@ -8,7 +8,7 @@ def check_change(buyer_rules, current_total_cents, item_name, price_cents):
     cap = buyer_rules.get("budget_cap_cents")
     if cap is not None and new_total > cap:
         over = new_total - cap
-        return "ask_human", f"New total ${new_total/100:.2f} is ${over/100:.2f} over the budget cap"
+        return "ask_human", f"New total ${new_total/100:,.2f} is ${over/100:,.2f} over the budget cap"
 
     if price_cents <= buyer_rules.get("auto_approve_under_cents", 0):
         return "allow", "Within auto-approve limit and budget"

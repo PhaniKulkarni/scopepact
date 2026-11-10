@@ -222,7 +222,7 @@ def close(pid: int):
     with SessionLocal() as db:
         pact = get_pact_or_404(db, pid)
         for auth_id in {i.auth_id for i in pact.items
-                        if i.auth_id and i.status in ("agreed", "verified", "needs_review")}:
+                        if i.auth_id and i.status in ("agreed", "verified", "needs_review", "released")}:
             code = paypal.void(auth_id)
             db.add(Payment(pact_id=pid, kind="void", paypal_id=auth_id, status=str(code)))
         for i in pact.items:
@@ -335,13 +335,29 @@ def review_proof(iid: int, body: ReviewIn):
         item = db.get(LineItem, iid)
         if not item:
             raise HTTPException(404, f"Item {iid} not found")
-        if item.status != "needs_review":
+        rejected_before = item.status == "agreed" and db.query(Proof).filter_by(item_id=iid).first()
+        if item.status != "needs_review" and not (body.approve and rejected_before):
             raise HTTPException(400, f"Item is '{item.status}', nothing to review")
         item.status = "verified" if body.approve else "agreed"
         log(db, item.pact_id, "human_review",
             f"{item.name}: client {'approved' if body.approve else 'rejected'} the proof")
         db.commit()
         return {"item": item.name, "status": item.status}
+
+
+@app.post("/items/{iid}/remove")
+def remove_item(iid: int):
+    """Client drops an unpaid item from the agreement. Its hold is released when the pact closes."""
+    with SessionLocal() as db:
+        item = db.get(LineItem, iid)
+        if not item:
+            raise HTTPException(404, f"Item {iid} not found")
+        if item.status not in ("agreed", "verified", "needs_review"):
+            raise HTTPException(400, f"Item is '{item.status}', it can't be removed")
+        item.status = "released"
+        log(db, item.pact_id, "item_removed", f"{item.name} {paypal.usd(item.price_cents)}")
+        db.commit()
+        return {"item": item.name, "status": "released"}
 
 
 # ---------------------------------------------------------------

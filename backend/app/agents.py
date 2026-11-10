@@ -59,6 +59,10 @@ using ONE screenshot or photo of the finished work. Write 2 to 4 things that are
 VISIBLE in a single still image (for a screen: its device size, and the parts it shows).
 Never include: behavior (working, clickable, opens, responsive, fast), comparisons with
 other versions or files, exact pixel sizes, prices, hours, estimates or quotes.
+If the seller says what they will show as proof (e.g. "proof: a screenshot of the text
+arriving on a phone"), build the criteria around exactly that proof.
+Otherwise, describe what the finished result looks like to its end user, not admin or
+settings screens.
 Example: "Must show: homepage at phone width; header with logo; navigation menu or menu
 icon; at least one content section"
 Return JSON only: {"item_name": "short name", "asked_cents": integer price in cents,

@@ -252,7 +252,7 @@ const store = {
 /* ---------------- status wording ---------------- */
 const ITEM_STATUS = {
   agreed: ["In progress", ""], verified: ["Verified", "blue"], paid: ["Paid", "green"],
-  needs_review: ["Client reviewing", "amber"], released: ["Released", ""],
+  needs_review: ["Client reviewing", "amber"], released: ["Removed", ""],
 };
 const CHANGE_STATUS = {
   approved: ["Approved", "green"], awaiting_buyer: ["Needs client approval", "amber"], blocked: ["Blocked by rules", "red"],
@@ -314,11 +314,11 @@ async function showHome() {
 
 /* ---------------- new agreement ---------------- */
 const EXAMPLE = {
-  title: "Brightside Bakery website",
-  items: [{ name: "Homepage design", price: 1200,
-            criteria: "A desktop homepage layout with a header, navigation menu and at least one content section" }],
-  cap: 1400, auto: 150, never: "rush", buyerNotes: "Small business, price-sensitive",
-  floor: 200, sellerNotes: "Mobile layouts take about 6 hours; first 2 revisions are free",
+  title: "GreenLeaf Solar seed pitch deck",
+  items: [{ name: "Pitch deck design (10 slides)", price: 900,
+            criteria: "A slide deck overview showing at least 6 slides with the GreenLeaf Solar name, including a title slide and a slide with a chart" }],
+  cap: 1100, auto: 200, never: "rush", buyerNotes: "Seed-stage startup, careful with spend",
+  floor: 150, sellerNotes: "One-pagers take about 4 hours; one revision included",
 };
 
 function itemRow(it = { name: "", price: "", criteria: "" }) {
@@ -485,6 +485,16 @@ function clientTasks(p) {
       <div class="row mt12"><button class="paypal" data-acceptask="${c.id}">Accept ${fmt(c.asked)} and hold</button>
         <button class="ghost" data-decline="${c.id}">Decline</button></div></div>`);
   }
+  for (const i of p.items.filter((i) => i.status === "agreed")) {
+    const pr = lastProof(p, i.id);
+    if (!pr || pr.passed) continue;
+    out.push(`<div class="todo amber"><div class="who client">Client · proof was rejected</div>
+      <h3>The AI rejected the proof for "${esc(i.name)}"</h3>
+      <ul class="reasons">${pr.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+      <div class="muted small mt8">The freelancer can upload better proof. Or, if you're happy with the work, you decide.</div>
+      <div class="row mt12"><button data-accept="${i.id}">Accept the work and pay ${fmt(i.price)}</button>
+        <button class="ghost" data-remove="${i.id}">Remove from agreement</button></div></div>`);
+  }
   for (const i of p.items.filter((i) => i.status === "needs_review")) {
     const pr = lastProof(p, i.id);
     out.push(`<div class="todo amber"><div class="who client">Client · please review</div>
@@ -526,7 +536,8 @@ function freelancerTasks(p) {
       <h3>${esc(i.name)} · ${fmt(i.price)}</h3>
       <div class="muted small">Proof must show: ${esc(i.criteria || i.name)}</div>
       ${pr && !pr.passed ? `<div class="mt8"><span class="pill red"><span class="dot"></span>Last proof rejected</span>
-         <ul class="reasons">${pr.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>` : ""}
+         <ul class="reasons">${pr.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+         <div class="muted small mt8">Upload proof that shows the checklist above, or ask the client to accept the work themselves.</div></div>` : ""}
       ${!i.held ? `<div class="muted small mt8">The client hasn't put this item on hold yet. You can still upload proof; payment follows once it's held.</div>` : ""}
       <div class="row mt12"><button data-upload="${i.id}">Upload proof</button>
         <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-file="${i.id}" hidden>
@@ -563,11 +574,11 @@ function freelancerTasks(p) {
   out.push(`<div class="todo"><div class="who free">Freelancer · scope changed?</div>
     ${others ? `<details data-key="req" ${openReq ? "open" : ""}><summary style="font-size:17px;color:var(--ink)">Request a change</summary>` : `<h3>Request a change</h3>`}
     <div class="muted small">Write it the way you'd text the client. Both agents negotiate within their owners' rules.</div>
-    <textarea id="changeMsg" class="mt8" placeholder="e.g. client wants a mobile version too, about $400, takes me around 6 hours">${esc(state.draft)}</textarea>
+    <textarea id="changeMsg" class="mt8" placeholder="e.g. founder wants a one-page investor summary too, about $350, around 4 hours">${esc(state.draft)}</textarea>
     <div class="chips">
-      <button type="button" data-chip="client wants a mobile version of the homepage too, I'd charge about $400, takes me around 6 hours">Mobile version</button>
-      <button type="button" data-chip="client asked for a third round of revisions on the homepage, $150 for that">Extra revision</button>
-      <button type="button" data-chip="client needs it by Friday, adding a rush fee of $100">Rush fee</button>
+      <button type="button" data-chip="founder now wants a one-page investor summary too, $350, about 4 hours">Investor one-pager</button>
+      <button type="button" data-chip="founder asked for 3 extra slides on financials, $250 for those">Extra slides</button>
+      <button type="button" data-chip="founder needs it by Friday, adding a rush fee of $100">Rush fee</button>
     </div>
     <div class="row mt12"><button data-change>Send to agents</button><span class="muted small">Takes about 10 seconds</span></div>${others ? "</details>" : ""}</div>`);
   return out;
@@ -581,7 +592,9 @@ function itemsCard(p) {
         <div class="nm">${esc(i.name)} ${i.version > 1 ? `<span class="pill blue" style="margin-left:6px">Added in v${i.version}</span>` : ""}</div>
         <div class="pr">${fmt(i.price)}</div>
         <div class="cr">${esc(i.criteria)}</div>
-        <div class="st">${pill(ITEM_STATUS[i.status] || [i.status, ""])}</div>
+        <div class="st">${pill(ITEM_STATUS[i.status] || [i.status, ""])}
+          ${state.role !== "freelancer" && p.status !== "closed" && ["agreed", "verified", "needs_review"].includes(i.status)
+            ? `<div><button class="link small" data-remove="${i.id}" title="Client only">Remove</button></div>` : ""}</div>
       </div>`).join("")}</div>
     <div class="total"><span>Total</span><span>${fmt(p.totals.agreed)}</span></div>
   </div>`;
@@ -659,6 +672,7 @@ function eventLine(e) {
     case "proof_needs_review": return [`AI unsure about proof for ${name(d)}, client reviewing`, "amber"];
     case "proof_rejected": return [`Reused image blocked: ${name(d)}`, "red"];
     case "human_review": return [d.replace(/^(.+): client (\w+) the proof$/, "Client $2 the proof for $1"), "blue"];
+    case "item_removed": return [`Client removed ${d.replace(/\s[\d.]+$/, "")} from the agreement`, ""];
     case "item_paid": return [`Paid ${amt(d)} for ${d.replace(/\s[\d.]+$/, "")}`, "green"];
     case "pact_closed": return ["Agreement closed, unused holds released", "green"];
     default: return null; // order_created and other technical events stay in the log
@@ -751,6 +765,10 @@ function wire(p) {
     try { const c = await post(`/items/${id}/capture`); toast(`You accepted the work. Paid ${fmt(c.captured)} through PayPal.`, "ok"); }
     catch (e) { toast(`Accepted. Not paid yet: ${e.message}`, "warn"); }
     await reload();
+  })));
+  $$("[data-remove]").forEach((b) => (b.onclick = () => busy(b, "Removing...", async () => {
+    const r = await post(`/items/${b.dataset.remove}/remove`);
+    toast(`Removed "${r.item}". Its money is released when you close the agreement.`, "warn"); await reload();
   })));
   $$("[data-reject]").forEach((b) => (b.onclick = () => busy(b, "Sending...", async () => {
     await post(`/items/${b.dataset.reject}/review`, { approve: false });

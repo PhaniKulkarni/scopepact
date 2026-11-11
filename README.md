@@ -44,7 +44,7 @@ When work changes halfway through, **ScopePact gives each side its own AI agent*
 
 Milestones are agreed at the start, but **real work changes in the middle**, and that's where payment fights begin.
 
-A founder hires a designer for a pitch deck, then asks for an investor one-pager too. A plumber opens a wall and finds a corroded pipe. A caterer's guest count goes from 100 to 130. Each change turns into calls, emails, a surprise invoice and, too often, a dispute.
+Clients ask for extra work, problems turn up mid-job, and quantities change. Each change turns into calls, emails, a surprise invoice and, too often, a dispute.
 
 Checkout and escrow tools assume the price is fixed up front. Nothing handles the price changing **while the work is happening**:
 
@@ -57,13 +57,15 @@ Checkout and escrow tools assume the price is fixed up front. Nothing handles th
 
 ScopePact gives the client and the freelancer **each their own AI agent**. The agents negotiate every change through a **sealed referee**, each side's **rules** decide what goes through, and **PayPal holds and pays only the agreed extra**.
 
-1. **Agree and set rules.** Both sides list the work, the prices and what "done" looks like. Each side sets rules for its own agent: **budget cap**, **auto-approve limit**, **banned items**. PayPal **holds** the money; nothing is charged yet.
-2. **A change comes in.** The freelancer types it in plain words, like *"founder now wants a one-page investor summary too, $350"*. An intake agent turns it into a priced item with a checklist.
-3. **Hard rules first.** If the item hits a banned word (for example *"rush"*), it's **blocked before any negotiation**.
+**What makes ScopePact different:** Traditional payment workflows generally agree on a price before work begins. ScopePact addresses what happens when that agreement changes. Instead of making people renegotiate every extra request, **independent AI agents** propose acceptable prices within their owners' **private limits**, a **deterministic referee** calculates the agreement price, and a **rules engine** controls which changes can proceed to PayPal authorization and capture.
+
+1. **Agree and set rules.** Both sides list the work, the prices and what "done" looks like. Each side sets rules for its own agent: **budget cap**, **auto-approve limit**, **banned items**. **PayPal authorizes and holds the funds**; nothing is captured yet.
+2. **A change comes in.** The freelancer describes it in plain words. An intake agent turns it into a priced item with a checklist.
+3. **Hard rules first.** If the item matches a banned item, it's **blocked before any negotiation**.
 4. **Agents negotiate.** The client's agent and the freelancer's agent each send the referee a **sealed limit**. The referee finds a fair price **without revealing either number**.
 5. **Code decides.** A rules engine with **no AI** approves the price, asks the client, or blocks it. An approved change becomes a **new version** of the agreement with its own PayPal hold for **just the extra amount**.
-6. **Pay for delivered work.** The freelancer uploads proof for each item, an AI checker compares it with the checklist, and **only verified items are captured**, one by one.
-7. **Close.** Any money still on hold goes **back to the client**.
+6. **Pay for delivered work.** The freelancer uploads proof for each item, an AI checker compares it with the checklist, and only **AI-verified or explicitly client-accepted** items are captured, one by one.
+7. **Close.** Unused authorized funds are **released**. They were never captured, so there is nothing to refund.
 
 <p align="center"><b>AI proposes. Code decides. PayPal settles.</b></p>
 
@@ -149,14 +151,14 @@ All calls are in [`backend/app/paypal.py`](backend/app/paypal.py) and run agains
 | Get an access token | `POST /v1/oauth2/token` |
 | Client funds the agreement, or an approved change | `POST /v2/checkout/orders` with `intent: AUTHORIZE` |
 | Client approves in PayPal, funds are held | `POST /v2/checkout/orders/{id}/authorize` |
-| An item is verified | `POST /v2/payments/authorizations/{id}/capture` (partial, `final_capture: false`) |
-| Agreement closed | `POST /v2/payments/authorizations/{id}/void` |
+| An item is AI-verified or client-accepted | `POST /v2/payments/authorizations/{id}/capture` (partial, `final_capture: false`) |
+| Agreement closed: unused authorized funds released | `POST /v2/payments/authorizations/{id}/void` |
 
 **Design notes**
 
-- **One authorization per agreement version.** The original work gets one hold; each approved change gets its own hold for just the extra.
+- **One authorization per agreement version.** PayPal authorizes and holds the original amount; each approved change gets its own authorization for just the extra.
 - **One capture per verified item**, so the client pays item by item.
-- **Every request sends a unique `PayPal-Request-Id`** so a retry can't charge twice, and every capture has a unique `invoice_id`.
+- **One `PayPal-Request-Id` per operation, reused on retry.** Network errors, 429 and 5xx responses are retried with the same ID. Authorize, capture and void IDs are built from PayPal's own order and authorization IDs, so a retried or double-clicked capture returns the original capture instead of creating a second one. Each item's capture also has a stable `invoice_id`.
 - **Every PayPal ID is stored** and shown under **PayPal records** in the app.
 
 ## How AI is used
@@ -179,15 +181,12 @@ The agents use the **Anthropic API** (model set by `LLM_MODEL`). Every reply is 
 
 Open the [**live demo**](https://scopepact.onrender.com/), or [run it locally](#run-it-locally). Use **Viewing as: Both** to see the client and the freelancer side by side.
 
-1. **Start an agreement.** The example is filled in: *GreenLeaf Solar seed pitch deck*, a 10-slide deck for **$900**.
-   Client rules: budget cap **$1,100**, auto-approve up to **$200**, never **"rush"**.
-   Click **Create and hold with PayPal** and approve as the sandbox client.
-2. **A change that needs the client.** As **Freelancer**, open **Request a change**, pick **Investor one-pager** ($350) and click **Send to agents**. The fair price lands above the $200 auto-approve limit, so it **waits for the client**. Open **How the agents negotiated** to see both agents, the referee and the rules engine.
-3. **Client approves.** Switch to **Client** and approve. PayPal holds **just the extra amount**.
-4. **A change that's blocked.** As **Freelancer**, pick **Rush fee** ($100). It's **blocked** by the *"never rush"* rule before any negotiation.
-5. **Proof and payment.** As **Freelancer**, upload an image for each item that shows what its checklist asks for (for example, a slide overview with the GreenLeaf Solar name, a title slide and a chart slide). **Verified items are paid one by one.**
-   Try `samples/4_TRICKY_prompt_injection.png` to see an injection attempt rejected.
-6. **Close.** As **Client**, click **Close agreement**. Anything still on hold is **released**.
+1. **Start an agreement.** Add the work items, a price for each, and what "done" looks like. Set the client's rules: a **budget cap**, an **auto-approve limit** and any **banned items**. Click **Create and hold with PayPal** and approve as the sandbox client.
+2. **Request a change.** As **Freelancer**, open **Request a change**, describe the extra work and its price in plain words, and click **Send to agents**. Open **How the agents negotiated** to see both agents, the referee and the rules engine.
+3. **See how it ends.** Depending on the client's rules, the change is **approved automatically**, **waits for the client**, ends in **no deal**, or is **blocked** if it matches a banned item.
+4. **Approve and hold.** If the change waits for the client, switch to **Client** and approve. PayPal authorizes and holds **just the extra amount**.
+5. **Proof and payment.** As **Freelancer**, upload an image for each item that shows what its checklist asks for. **AI-verified or client-accepted items are captured one by one.**
+6. **Close.** As **Client**, click **Close agreement**. Unused authorized funds are **released**.
 
 ---
 
@@ -263,7 +262,7 @@ samples/          Proof images for the demo
 ## Limitations and what's next
 
 - **Payouts to the freelancer.** Captured funds go to the platform's sandbox merchant account today. Next: PayPal multiparty onboarding so funds go straight to the seller.
-- **Webhooks and reauthorization** for jobs that run past PayPal's honor period.
+- **Webhooks and reauthorization.** A PayPal authorization is valid for 29 days, with a 3-day honor period, so longer jobs need reauthorization.
 - **Fairer price mechanism.** A midpoint split can tempt an agent to understate its limit; a mechanism that makes understating pointless would fix that.
 - **More templates:** home services (photo proof with a one-time code), events, B2B orders.
 - **Sign-in for each party**, so each side sees only its own view.
@@ -274,4 +273,5 @@ samples/          Proof images for the demo
 **Python** · **FastAPI** · **SQLAlchemy** · **SQLite** · **PayPal REST APIs** (Orders v2, Payments v2) · **Anthropic API** · vanilla **HTML/CSS/JavaScript**
 
 ## License
-**MIT**
+
+[MIT](LICENSE)

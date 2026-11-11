@@ -273,6 +273,3 @@ samples/          Proof images for the demo
 
 **Python** · **FastAPI** · **SQLAlchemy** · **SQLite** · **PayPal REST APIs** (Orders v2, Payments v2) · **Anthropic API** · vanilla **HTML/CSS/JavaScript**
 
-## License
-
-[MIT](LICENSE)

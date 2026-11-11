@@ -393,6 +393,17 @@ def request_change(pid: int, c: ChangeIn):
         if c.buyer_message:
             turn("buyer_agent", c.buyer_message)
 
+        # 0. Hard rules first: a banned item is blocked before any negotiation
+        pre, pre_why = policy.check_change(get_rules(db, pid, "buyer"), current_total(pact),
+                                           c.item_name, 0)
+        if pre == "block":
+            cr.status = "blocked"
+            cr.decision_reason = pre_why
+            turn("policy", f"BLOCK: {pre_why}")
+            log(db, pid, "change_blocked", f"{c.item_name}: {pre_why}")
+            db.commit()
+            return {"change_id": cr.id, "status": cr.status, "reason": pre_why}
+
         # 1. Referee finds a price without revealing either limit
         result = referee.settle(c.buyer_max_cents, c.seller_min_cents, c.asked_cents)
         if not result["deal"]:

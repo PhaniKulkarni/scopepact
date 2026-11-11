@@ -174,6 +174,9 @@ def paypal_return(token: str, pact_id: int):
         return RedirectResponse(f"/app/?pact={pact_id}&msg=auth_failed")
     with SessionLocal() as db:
         pact = get_pact_or_404(db, pact_id)
+        # Page refreshed or PayPal redirected twice: same authorization, already recorded
+        if db.query(Payment).filter_by(kind="authorization", paypal_id=auth_id).first():
+            return RedirectResponse(f"/app/?pact={pact_id}&msg=held")
         held = 0
         for i in pact.items:
             if i.auth_id is None and i.status == "agreed":
@@ -204,7 +207,7 @@ def capture_item(iid: int):
         if not item.auth_id:
             raise HTTPException(400, "Blocked: no PayPal hold for this item yet")
         r = paypal.capture(item.auth_id, item.price_cents,
-                           f"pact-{item.pact_id}-item-{item.id}-{uuid.uuid4().hex[:8]}",
+                           f"{item.auth_id}-item-{item.id}",
                            f"{item.name} verified")
         if r.get("status") != "COMPLETED":
             raise HTTPException(502, f"PayPal capture failed: {r}")

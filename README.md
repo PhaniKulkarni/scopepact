@@ -256,7 +256,6 @@ backend/
   static/
     index.html    The web app (client, freelancer and both views)
   requirements.txt
-samples/          Proof images for the demo
 ```
 
 ## Limitations and what's next

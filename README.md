@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://scopepact.onrender.com/"><img alt="Live demo" src="https://img.shields.io/badge/Live%20demo-scopepact.onrender.com-0070BA?style=for-the-badge"></a>
-  <a href="https://youtu.be/825DZZmHyow"><img alt="Demo video" src="https://img.shields.io/badge/Demo%20video-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white"></a>
+  <a href="https://youtu.be/V3OM1KlCacU"><img alt="Demo video" src="https://img.shields.io/badge/Demo%20video-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white"></a>
 </p>
 
 <p align="center">
